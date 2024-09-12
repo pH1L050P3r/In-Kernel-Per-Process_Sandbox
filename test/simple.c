@@ -1,11 +1,7 @@
 #include <stdio.h>
-#include <stdlib.h>
 
-void bar(){
-	bar();
-	int* arr = (int *)malloc(sizeof(int) * 1024);
-	free(arr);
-}	
+extern void bar();
+int func_defined();
 
 int func_defined(){
 	bar();
@@ -13,7 +9,14 @@ int func_defined(){
 }
 
 int main(){
+	int x;
+	for(int c; c < 100; c++) bar();
+p:
+	getchar();
 	func_defined();
-	printf("Hello World");
+	if(x > 10)
+		printf("Hello World");
+	func_defined();
+	goto p;
 	return 0;
 }
