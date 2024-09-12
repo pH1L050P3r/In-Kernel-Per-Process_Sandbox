@@ -4,6 +4,8 @@
 #include "llvm/IR/LegacyPassManager.h"
 #if TVM_LLVM_VERSION < 170
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/IR/InstrTypes.h"     // For CallInst class
+#include "llvm/IR/Instructions.h"   
 #endif
 
 using namespace llvm;
@@ -13,8 +15,22 @@ namespace {
     static char ID;
     SkeletonPass() : FunctionPass(ID) {}
 
-    virtual bool runOnFunction(Function &F) {
-      errs() << "I saw a function called " << F.getName() << "!\n";
+    virtual bool runOnFunction(Function &Func) {
+      // errs() << "I saw a function called " << F.getName() << "!\n";
+      for (auto &basicBlock : Func) {
+        for (auto &instruction : basicBlock) {
+          CallInst *callInst = dyn_cast<CallInst>(&instruction);
+          if (callInst == nullptr)
+            continue; // not a call instruction
+
+          Function *calledFunction = callInst->getCalledFunction();
+
+          if (calledFunction == nullptr)
+            continue; // called Function details not found
+            
+          errs() << "Function Call From : " << Func.getName()  << " to : " << calledFunction->getName() << "\n";
+        }
+      }
       return false;
     }
   };
