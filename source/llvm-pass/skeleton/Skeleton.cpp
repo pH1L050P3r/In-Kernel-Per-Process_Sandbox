@@ -18,60 +18,62 @@ using namespace llvm;
 namespace {
   struct SkeletonPass : public FunctionPass {
     static char ID;
-    unsigned long int gID = 0;
-    std::map<unsigned long int, std::set<void*>> mp;
-    std::map<void*, unsigned long int> st;  // block and state
+    uint64_t gID = 0;
+    std::map<void*, std::pair<uint64_t, uint64_t>> blockStartEndState;
     SkeletonPass() : FunctionPass(ID) {}
 
     virtual bool runOnFunction(Function &Func) {
-      unsigned long int gID = 0;
-      errs() << "\ndigraph " << Func.getName() << " {" << "\n";
       for (auto &basicBlock : Func) {
         void *blockAddress = static_cast<void*>(&basicBlock);
-        bool isState = false;
+        blockStartEndState.insert({blockAddress, {gID++, -1}});
+      }
+      errs() << "\ndigraph " << Func.getName() << " {" << "\n";
+      for(auto &basicBlock : Func){
+        void *blockAddress = static_cast<void*>(&basicBlock);
+        std::pair<uint64_t, uint64_t> nodes = blockStartEndState[blockAddress];
+        processBlockToGraph(nodes, basicBlock, Func);
+        if (Instruction *terminator = basicBlock.getTerminator()) {
+          if (BranchInst *branch = dyn_cast<BranchInst>(terminator)) {
+            if (branch->isConditional()) {
+                printEdge(nodes.second, blockStartEndState[branch->getSuccessor(0)].first, "e", Func);
+                printEdge(nodes.second, blockStartEndState[branch->getSuccessor(1)].first, "e", Func);
+            } else {
+                // Unconditional branch (only one successor)
+                printEdge(nodes.second, blockStartEndState[branch->getSuccessor(0)].first, "e", Func);
+            }
+          }
+        }
+      }
+      errs() << "}" << "\n";
+      return false;
+    }
+
+
+    void processBlockToGraph(std::pair<unsigned long int, unsigned long int> &nodes, BasicBlock &basicBlock, Function &func){
+        unsigned long int endNode = nodes.first;
+        unsigned long int start = nodes.first;
+        unsigned long int end = nodes.first;
         for (auto &instruction : basicBlock) {
           CallInst *callInst = dyn_cast<CallInst>(&instruction);
           if (callInst == nullptr) continue;
           Function *calledFunction = callInst->getCalledFunction();
           if (calledFunction == nullptr) continue;
 
-          if(st.find(blockAddress) == st.end()) {
-            st.insert({blockAddress, gID});
-            isState = true;
-          }
+          start = end;
+          endNode = gID++;
+          printEdge(start, endNode, calledFunction->getName().str(), func);
+        }
+        nodes.second = endNode;
+    }
 
-          std::string start = Func.getName().str() + "_" + std::to_string(gID);
-          std::string end= Func.getName().str() + "_" + std::to_string(++gID);
-          errs() << "    " << start << " -> " << end << "[label=\"" << calledFunction->getName().str()<< "\"];\n";
-        }
+    std::string getNodeName(uint64_t nodeId, Function &func){
+      return func.getName().str() + "_" + std::to_string(nodeId);
+    }
 
-        if (Instruction *terminator = basicBlock.getTerminator()) {
-          if (BranchInst *branch = dyn_cast<BranchInst>(terminator)) {
-            if (branch->isConditional()) {
-                mp[gID].insert(branch->getSuccessor(0));
-                mp[gID].insert(branch->getSuccessor(1));
-            } else {
-                // Unconditional branch (only one successor)
-                mp[gID].insert(branch->getSuccessor(0));
-            }
-          }
-        }
-        if(!isState){
-          std::string start = Func.getName().str() + "_" + std::to_string(gID);
-          std::string end= Func.getName().str() + "_" + std::to_string(1+gID);
-          errs() << "    " << start << " -> " << end << "[label=\"e" << "\"];\n";
-          st.insert({blockAddress, gID++});
-        }
-      }
-      for(auto it : mp){
-        for(auto index : it.second){
-          std::string start = Func.getName().str() + "_" + std::to_string(it.first);
-          std::string end = Func.getName().str() + "_" + std::to_string(st[index]);
-          errs() << "    " << start << " -> " << end << "[label=\"e"<< "\"];\n";
-        }
-      }
-      errs() << "}" << "\n";
-      return false;
+    void printEdge(uint64_t src, uint64_t dst, std::string e, Function &func){
+      std::string start = getNodeName(src, func);
+      std::string end = getNodeName(dst, func);
+      errs() << "    " << start << " -> " << end << "[label=\"" << e << "\"];\n";
     }
   };
 }
