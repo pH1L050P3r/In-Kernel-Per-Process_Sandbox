@@ -23,6 +23,7 @@ namespace {
     SkeletonPass() : FunctionPass(ID) {}
 
     virtual bool runOnFunction(Function &Func) {
+      uint64_t gID = 0;
       for (auto &basicBlock : Func) {
         void *blockAddress = static_cast<void*>(&basicBlock);
         blockStartEndState.insert({blockAddress, {gID++, -1}});
@@ -31,16 +32,11 @@ namespace {
       for(auto &basicBlock : Func){
         void *blockAddress = static_cast<void*>(&basicBlock);
         std::pair<uint64_t, uint64_t> nodes = blockStartEndState[blockAddress];
-        processBlockToGraph(nodes, basicBlock, Func);
+        processBlockToGraph(nodes, basicBlock, Func, gID);
         if (Instruction *terminator = basicBlock.getTerminator()) {
-          if (BranchInst *branch = dyn_cast<BranchInst>(terminator)) {
-            if (branch->isConditional()) {
-                printEdge(nodes.second, blockStartEndState[branch->getSuccessor(0)].first, "e", Func);
-                printEdge(nodes.second, blockStartEndState[branch->getSuccessor(1)].first, "e", Func);
-            } else {
-                // Unconditional branch (only one successor)
-                printEdge(nodes.second, blockStartEndState[branch->getSuccessor(0)].first, "e", Func);
-            }
+          unsigned numSuccessors = terminator->getNumSuccessors();
+          for (unsigned i = 0; i < numSuccessors; ++i) {
+            printEdge(nodes.second, blockStartEndState[terminator->getSuccessor(i)].first, "e", Func);
           }
         }
       }
@@ -49,8 +45,7 @@ namespace {
     }
 
 
-    void processBlockToGraph(std::pair<unsigned long int, unsigned long int> &nodes, BasicBlock &basicBlock, Function &func){
-        unsigned long int endNode = nodes.first;
+    void processBlockToGraph(std::pair<unsigned long int, unsigned long int> &nodes, BasicBlock &basicBlock, Function &func, uint64_t &gID){
         unsigned long int start = nodes.first;
         unsigned long int end = nodes.first;
         for (auto &instruction : basicBlock) {
@@ -60,10 +55,10 @@ namespace {
           if (calledFunction == nullptr) continue;
 
           start = end;
-          endNode = gID++;
-          printEdge(start, endNode, calledFunction->getName().str(), func);
+          end = gID++;
+          printEdge(start, end, calledFunction->getName().str(), func);
         }
-        nodes.second = endNode;
+        nodes.second = end;
     }
 
     std::string getNodeName(uint64_t nodeId, Function &func){
