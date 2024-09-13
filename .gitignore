@@ -34,3 +34,6 @@
 
 # Folder
 .vscode
+
+# extra files
+temp.txt

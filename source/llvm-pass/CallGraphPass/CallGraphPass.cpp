@@ -16,11 +16,11 @@
 using namespace llvm;
 
 namespace {
-  struct SkeletonPass : public FunctionPass {
+  struct CallGraphPass : public FunctionPass {
     static char ID;
     uint64_t gID = 0;
     std::map<void*, std::pair<uint64_t, uint64_t>> blockStartEndState;
-    SkeletonPass() : FunctionPass(ID) {}
+    CallGraphPass() : FunctionPass(ID) {}
 
     virtual bool runOnFunction(Function &Func) {
       uint64_t gID = 0;
@@ -73,13 +73,13 @@ namespace {
   };
 }
 
-char SkeletonPass::ID = 0;
+char CallGraphPass::ID = 0;
 
 // Automatically enable the pass.
 // http://adriansampson.net/blog/clangpass.html
 static void registerSkeletonPass(const PassManagerBuilder &,
                          legacy::PassManagerBase &PM) {
-  PM.add(new SkeletonPass());
+  PM.add(new CallGraphPass());
 }
 static RegisterStandardPasses
   RegisterMyPass(PassManagerBuilder::EP_EarlyAsPossible,

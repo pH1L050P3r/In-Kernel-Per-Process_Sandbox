@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.4)
-project(llvm-pass-tutorial)
+project(llvm-pass)
 
 # we need LLVM_HOME in order to automatically set LLVM_DIR
 if(NOT DEFINED ENV{LLVM_HOME})
@@ -16,4 +16,4 @@ if (${LLVM_VERSION_MAJOR} VERSION_GREATER_EQUAL 10)
     set(CMAKE_CXX_STANDARD 14)
 endif ()
 
-add_subdirectory(skeleton)  # Use your pass name here.
+add_subdirectory(CallGraphPass)  # Use your pass name here.
