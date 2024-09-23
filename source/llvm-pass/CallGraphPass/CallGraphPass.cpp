@@ -64,6 +64,9 @@ namespace {
           start = end;
           end = gID++;
           printEdge(start, end, calledFunction->getName().str(), func, file);
+          if(calledFunction->getName().str() == func.getName().str()){
+            printEdge(end, 0, "e", func, file);
+          }
         }
         nodes.second = end;
     }
