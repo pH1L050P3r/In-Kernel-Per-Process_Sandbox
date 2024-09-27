@@ -17,6 +17,10 @@ p:
 	if(x > 10)
 		printf("Hello World");
 	func_defined();
-	goto p;
+	while (getchar() == 'a')
+	{
+		main();
+	}
+	
 	return 0;
 }
