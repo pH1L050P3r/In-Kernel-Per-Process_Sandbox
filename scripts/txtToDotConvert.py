@@ -37,7 +37,7 @@ class Graph():
     def exportToDot(self, fp):
         for node, edges in self._graph.items():
             for e in edges:
-                fp.write(f"{node} -> {e.node}[label={e.edge}]\n")
+                fp.write(f"""{node} -> {e.node}[label="{e.edge}"]\n""")
 
     def print(self):
         print(self._name)
@@ -70,7 +70,7 @@ class Graph():
     def exportToDot(self, fp):
         for node, edges in self._graph.items():
             for e in edges:
-                fp.write(f"{node} -> {e.node}[label={e.edge}]\n")
+                fp.write(f"""\t{node} -> {e.node}[label="{e.edge}"]\n""")
 
 
 def exportDOTFormat(graphList, lis):

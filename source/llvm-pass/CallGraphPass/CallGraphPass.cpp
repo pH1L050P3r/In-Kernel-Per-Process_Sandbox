@@ -30,7 +30,7 @@ namespace {
       gID = 1;
       graph.clear();
       outDeg.clear();
-      std::ofstream outfile("graph.txt", std::ios_base::app);
+      // std::ofstream outfile("graph.txt", std::ios_base::app);
       std::vector<uint64_t> recursiveCallEnd;
 
       for(auto& bb : Func){
@@ -41,7 +41,7 @@ namespace {
       outDeg.insert(0);
       
       for(auto &basicBlock : Func){
-        uint64_t end = processBlockToGraph(basicBlock, Func, gID, outfile, recursiveCallEnd);
+        uint64_t end = processBlockToGraph(basicBlock, Func, gID, recursiveCallEnd);
         if (Instruction *terminator = basicBlock.getTerminator()) {
           unsigned numSuccessors = terminator->getNumSuccessors();
           for (unsigned i = 0; i < numSuccessors; ++i) {
@@ -72,21 +72,21 @@ namespace {
       for(auto node : endNodes){
         graph[node].push_back({gID, "e"});
       }
-
-      outfile << "\ndigraph " << Func.getName().str() << " {" << "\n";
-      for(auto node : graph){
-        for(auto e : node.second){
-          outfile << node.first << " -> " << e.first << " [label=\"" << e.second << "\"]\n"; 
-        }
-      }
-      outfile << "}\n";
       to_epsillon_DFA(Func, 0, gID, graph);
-      outfile.close();
+
+      // outfile << "\ndigraph " << Func.getName().str() << " {" << "\n";
+      // for(auto node : graph){
+      //   for(auto e : node.second){
+      //     outfile << node.first << " -> " << e.first << " [label=\"" << e.second << "\"]\n"; 
+      //   }
+      // }
+      // outfile << "}\n";
+      // outfile.close();
       return false;
     }
 
 
-    uint64_t processBlockToGraph(BasicBlock &basicBlock, Function &func, uint64_t &gID, std::ofstream &file, std::vector<uint64_t> &funcReturn_vec){
+    uint64_t processBlockToGraph(BasicBlock &basicBlock, Function &func, uint64_t &gID, std::vector<uint64_t> &funcReturn_vec){
       uint64_t start = bbID[static_cast<void*>(&basicBlock)];
       uint64_t end = start;
       for (auto &instruction : basicBlock) {
@@ -112,7 +112,7 @@ namespace {
     }
 
     void to_epsillon_DFA(Function& func, uint64_t start, uint64_t endState, std::map<uint64_t, std::vector<std::pair<uint64_t, std::string>>> &graph){
-      std::ofstream outfile("ENFA_"+ func.getName().str() +".txt", std::ios_base::app);
+      std::ofstream outfile("ENFA_"+ func.getName().str() +".txt");  //, std::ios_base::app);
       outfile << start << "\n";
       outfile << endState << "\n";
       for(auto item : graph){
