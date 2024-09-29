@@ -1,12 +1,18 @@
-#include "llvm/Pass.h"
-#include "llvm/IR/Function.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/Module.h"
 #if TVM_LLVM_VERSION < 170
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
-#include "llvm/IR/InstrTypes.h"     // For CallInst class
-#include "llvm/IR/Instructions.h"   
+#else
+#include "llvm/Pass.h"
 #endif
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Passes/PassPlugin.h"
+#include "llvm/IR/InstrTypes.h"     // For CallInst class
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Function.h"
 
 #include <map>
 #include <set>
@@ -122,113 +128,137 @@ namespace {
       outfile.close();
     }
   };
+
+  struct FunctionListPass : public FunctionPass {
+    static char ID;
+    std::set<std::string> fname;
+
+    FunctionListPass() : FunctionPass(ID) {}
+
+    virtual bool doInitialization(Module &)  {
+      fname.clear();
+      deserializeSet("function_defined.txt"); 
+      return false; 
+    }
+
+    virtual bool doFinalization(Module &) { 
+      serializeSet("function_defined.txt");
+      return false; 
+    }
+
+    virtual bool runOnFunction(Function &Func) {
+      fname.insert(Func.getName().str());
+      errs() << Func.getName().str() << "\n";
+      return false;
+    }
+
+    void serializeSet(const std::string& filename) {
+        std::ofstream outFile(filename, std::ios::trunc);
+        if (!outFile) {
+            errs() << "Could not open the file for writing: " << filename << "\n";
+            return;
+        }
+        for (const std::string& element : fname) {
+            outFile << element <<  "\n"; // Write each element to a new line
+        }
+        outFile.close();
+    }
+
+    void deserializeSet(const std::string& filename) {
+      std::ifstream inFile(filename);
+      if (!inFile) {
+          errs() << "Could not open the file for reading: " << filename << "\n";
+          return;
+      }
+
+      std::string element;
+      while (inFile >> element) {
+          fname.insert(element); // Insert each element into the set
+      }
+      inFile.close();
+    }
+  };
 }
 
 char CallGraphPass::ID = 0;
+char FunctionListPass::ID = 1;
 
-// Automatically enable the pass.
-// http://adriansampson.net/blog/clangpass.html
-static void registerSkeletonPass(const PassManagerBuilder &,
-                         legacy::PassManagerBase &PM) {
+static void registerFunctionPass(const PassManagerBuilder &, legacy::PassManagerBase &PM) {
   PM.add(new CallGraphPass());
+  PM.add(new FunctionListPass());
 }
-static RegisterStandardPasses
-  RegisterMyPass(PassManagerBuilder::EP_EarlyAsPossible,
-                 registerSkeletonPass);
+static RegisterStandardPasses RegisterMyPass(PassManagerBuilder::EP_EarlyAsPossible, registerFunctionPass);
 
 
 
 
 
-// void addEdgeToGraph(uint64_t src, uint64_t dst, std::string e, Function &func, std::ofstream &file){
-//   std::string start = getNodeName(src, func);
-//   std::string end = getNodeName(dst, func);
-//   dOut[start]++;
-//   dIn[end]++;
-//   if(dOut.find(end) == dOut.end()) dOut[end] = 0;
-//   if(dIn.find(start) == dIn.end()) dOut[start] = 0;
-//   graph[start].push_back({end, e});
-// }
 
 
 
-// virtual bool runOnFunction(Function &Func) {
-//   graph.clear();
-//   dOut.clear();
-//   dIn.clear();
-//   std::ofstream outfile("graph.txt", std::ios_base::app);
-//   uint64_t gID = 1;
-
-//   for (auto &basicBlock : Func) {
-//     void *blockAddress = static_cast<void*>(&basicBlock);
-//     blockIds.insert({blockAddress, gID++});
-//   }
-//   std::vector<uint64_t> funcReturn_vec;
-  
-//   for(auto &basicBlock : Func){
-//     processBlockToGraph(basicBlock, Func, gID, outfile, funcReturn_vec);
-//     if (Instruction *terminator = basicBlock.getTerminator()) {
-//       unsigned numSuccessors = terminator->getNumSuccessors();
-//       for (unsigned i = 0; i < numSuccessors; ++i) {
-//         addEdgeToGraph(gID-1, blockIds[terminator->getSuccessor(i)], "e", Func, outfile);
-//       }
-//     }
-//   }
-
-//   addStartAndEndNode(funcReturn_vec, Func, gID);
-
-//   errs() << "\ndigraph " << Func.getName() << " {" << "\n";
-//   for(auto n : graph){
-//     for(auto e : n.second){
-//       outfile << Func.getName().str() << "," <<  n.first << "," << e.first << "," << e.second  << "\n";
-//       errs() << "    " <<  n.first << " -> " << e.first << "[label=\"" << e.second  << "\"];\n";
-//     }
-//   }
-//   errs() << "}" << "\n";
-//   outfile.close();
-//   return false;
-// }
 
 
-// void processBlockToGraph(BasicBlock &basicBlock, Function &func, uint64_t &gID, std::ofstream &file, std::vector<uint64_t> &funcReturn_vec){
-//   uint64_t start = blockIds[static_cast<void*>(&basicBlock)];
-//   uint64_t end = start;
-//   for (auto &instruction : basicBlock) {
-//     CallInst *callInst = dyn_cast<CallInst>(&instruction);
-//     if (callInst == nullptr) continue;
-//     Function *calledFunction = callInst->getCalledFunction();
-//     if (calledFunction == nullptr) continue;
 
-//     if(calledFunction->getName().str() == func.getName().str()){
-//       start = end;
-//       end = gID++;
-//       funcReturn_vec.push_back(end);
-//       addEdgeToGraph(start, blockIds[static_cast<void*>(&func.getEntryBlock())], "call_" + calledFunction->getName().str(),func, file);
-//     } else{
-//       start = end;
-//       end = gID++;
-//       addEdgeToGraph(start, end, calledFunction->getName().str(), func, file);
-//     }
-//   }
-// }
 
-// void addStartAndEndNode(std::vector<uint64_t> funcReturn_vec, Function &func, uint64_t &gID){
-//   uint64_t valueToFind = 0;
-//   uint64_t entry_node =  blockIds[static_cast<void*>(&func.getEntryBlock())];
-  
-//   graph[getNodeName(0, func)].push_back({getNodeName(entry_node, func), "e"});
-//   std::string endNode = getNodeName(gID++, func);
 
-//   for(auto item : dOut){
-//     if(item.second == 0){
-//       graph[item.first].push_back({endNode, "e"});
-//       for(auto ret : funcReturn_vec){
-//         graph[item.first].push_back({getNodeName(ret, func), "e"});
-//       }
-//     }
-//   }
-// }
 
-// std::string getNodeName(uint64_t nodeId, Function &func){
-//   return func.getName().str() + "_" + std::to_string(nodeId);
-// }
+
+
+
+
+
+
+
+
+
+
+  // struct AddDumySystemCall : public FunctionPass {
+  //   static char ID;
+  //   AddDumySystemCall() : FunctionPass(ID) {}
+
+  //   virtual bool runOnFunction(Function &F) override {
+  //       // Create printf function prototype
+  //       LLVMContext &context = F.getParent()->getContext();
+  //       IRBuilder<> builder(context);
+  //       FunctionType *printfType = FunctionType::get(
+  //                                     IntegerType::getInt32Ty(context),
+  //                                     PointerType::get(Type::getInt8Ty(context), 0),
+  //                                     true
+  //                                   );
+  //       FunctionCallee printfFunc = F.getParent()->getOrInsertFunction("printf", printfType);
+  //       std::string values;
+  //       bool isInsert = false;
+  //       for (auto &BB : F) {
+  //           for (auto &I : BB) {
+  //               if(isInsert){
+  //                   builder.SetInsertPoint(&BB, std::next(BB.getFirstInsertionPt()));
+  //                   Value *strValue = builder.CreateGlobalStringPtr(values);
+  //                   builder.SetInsertPoint(&I);
+  //                   builder.CreateCall(printfFunc, {strValue});
+  //                   isInsert = false;
+  //               }
+  //               CallInst *callInst = dyn_cast<CallInst>(&I);
+  //               errs() << " " << std::to_string(callInst != nullptr) << "\n";
+  //               if (callInst != nullptr) {
+  //                 errs() << "I am here \n";
+  //                   // Create a local variable for the printf message
+  //                   builder.SetInsertPoint(&BB, std::next(BB.getFirstInsertionPt()));
+  //                   // AllocaInst *alloca = builder.CreateAlloca(Type::getInt8Ty(context), builder.getInt32(16), "printf_str");
+
+  //                   // Store the string in the allocated space
+  //                   Value *strValue = builder.CreateGlobalStringPtr(callInst->getCalledFunction()->getName().str() + " Called \n");
+
+  //                   // Set the insertion point for the printf call
+  //                   builder.SetInsertPoint(callInst);
+  //                   builder.CreateCall(printfFunc, {strValue});
+  //                   isInsert = true;
+  //                   values = callInst->getCalledFunction()->getName().str() + " return \n";
+  //               }
+  //           }
+  //           if(isInsert){
+  //               isInsert = false;
+  //           }
+  //       }
+  //       return true; // The function was modified
+  //   }
+  // };

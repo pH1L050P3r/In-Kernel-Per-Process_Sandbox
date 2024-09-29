@@ -10,12 +10,12 @@ int func_defined(){
 
 int main(){
 	int x;
-	for(int c; c < 100; c++) bar();
+	for(int c = 1; c < 2; c++) bar();
 p:
 	getchar();
 	func_defined();
 	if(x > 10)
-		printf("Hello World");
+		printf("Hello World\n");
 	func_defined();
 	while (getchar() == 'a')
 	{
