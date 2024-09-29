@@ -1,0 +1,7 @@
+LLVM 12
+CLANG 12
+python3.8
+
+LLVM_HOME=/usr/bin/llvm-as-12
+LLVM_DIR=/usr/lib/llvm-12/lib/cmake/llvm
+PATH=/usr/local/musl/bin:/usr/lib/llvm-12/bin/:$PATH
