@@ -178,87 +178,53 @@ namespace {
       inFile.close();
     }
   };
+
+  struct AddDumyFunctionCall : public FunctionPass {
+    static char ID;
+
+    AddDumyFunctionCall() : FunctionPass(ID) {}
+
+    bool runOnFunction(Function &Func){
+      LLVMContext &context = Func.getParent()->getContext();
+      IRBuilder<> builder(context);
+      FunctionType *printfType = FunctionType::get(IntegerType::getInt32Ty(context), PointerType::get(Type::getInt8Ty(context), 0), true);
+      FunctionCallee printfFunc = Func.getParent()->getOrInsertFunction("printf", printfType);
+      std::string values;
+      bool isInsert = false;
+      for (auto &BB : Func) {
+          for (auto &I : BB) {
+              if(isInsert){
+                  builder.SetInsertPoint(&BB, std::next(BB.getFirstInsertionPt()));
+                  Value *strValue = builder.CreateGlobalStringPtr(values);
+                  builder.SetInsertPoint(&I);
+                  builder.CreateCall(printfFunc, {strValue});
+                  isInsert = false;
+              }
+              if (auto *callInst = dyn_cast<CallInst>(&I)) {
+                  builder.SetInsertPoint(&BB, std::next(BB.getFirstInsertionPt()));
+                  Value *strValue = builder.CreateGlobalStringPtr(callInst->getCalledFunction()->getName().str() + " Called \n");
+                  builder.SetInsertPoint(callInst);
+                  builder.CreateCall(printfFunc, {strValue});
+                  isInsert = true;
+                  values = callInst->getCalledFunction()->getName().str() + " return \n";
+              }
+          }
+          if(isInsert){
+              isInsert = false;
+          }
+      }
+      return true;
+    }
+  };
 }
 
 char CallGraphPass::ID = 0;
 char FunctionListPass::ID = 1;
+char AddDumyFunctionCall::ID = 2;
 
 static void registerFunctionPass(const PassManagerBuilder &, legacy::PassManagerBase &PM) {
   PM.add(new CallGraphPass());
   PM.add(new FunctionListPass());
+  PM.add(new AddDumyFunctionCall());
 }
 static RegisterStandardPasses RegisterMyPass(PassManagerBuilder::EP_EarlyAsPossible, registerFunctionPass);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  // struct AddDumySystemCall : public FunctionPass {
-  //   static char ID;
-  //   AddDumySystemCall() : FunctionPass(ID) {}
-
-  //   virtual bool runOnFunction(Function &F) override {
-  //       // Create printf function prototype
-  //       LLVMContext &context = F.getParent()->getContext();
-  //       IRBuilder<> builder(context);
-  //       FunctionType *printfType = FunctionType::get(
-  //                                     IntegerType::getInt32Ty(context),
-  //                                     PointerType::get(Type::getInt8Ty(context), 0),
-  //                                     true
-  //                                   );
-  //       FunctionCallee printfFunc = F.getParent()->getOrInsertFunction("printf", printfType);
-  //       std::string values;
-  //       bool isInsert = false;
-  //       for (auto &BB : F) {
-  //           for (auto &I : BB) {
-  //               if(isInsert){
-  //                   builder.SetInsertPoint(&BB, std::next(BB.getFirstInsertionPt()));
-  //                   Value *strValue = builder.CreateGlobalStringPtr(values);
-  //                   builder.SetInsertPoint(&I);
-  //                   builder.CreateCall(printfFunc, {strValue});
-  //                   isInsert = false;
-  //               }
-  //               CallInst *callInst = dyn_cast<CallInst>(&I);
-  //               errs() << " " << std::to_string(callInst != nullptr) << "\n";
-  //               if (callInst != nullptr) {
-  //                 errs() << "I am here \n";
-  //                   // Create a local variable for the printf message
-  //                   builder.SetInsertPoint(&BB, std::next(BB.getFirstInsertionPt()));
-  //                   // AllocaInst *alloca = builder.CreateAlloca(Type::getInt8Ty(context), builder.getInt32(16), "printf_str");
-
-  //                   // Store the string in the allocated space
-  //                   Value *strValue = builder.CreateGlobalStringPtr(callInst->getCalledFunction()->getName().str() + " Called \n");
-
-  //                   // Set the insertion point for the printf call
-  //                   builder.SetInsertPoint(callInst);
-  //                   builder.CreateCall(printfFunc, {strValue});
-  //                   isInsert = true;
-  //                   values = callInst->getCalledFunction()->getName().str() + " return \n";
-  //               }
-  //           }
-  //           if(isInsert){
-  //               isInsert = false;
-  //           }
-  //       }
-  //       return true; // The function was modified
-  //   }
-  // };
