@@ -13,6 +13,57 @@ class Graph():
         self._end = "-1"
         self._graph = dict()
         self._name = name
+        self._nodes = set()
+
+    def removeLoop(self):
+        degree = {}
+        for node in self._nodes:
+            degree[node] = [set(), set()]
+        
+        # incomming = {(from, edge), ...} [0]
+        # outgoing = {edge, ...}          [1]
+        for node in self._nodes:
+            for e in self._graph[node]:
+                degree[node][1].add(e)
+                degree[e.node][0].add((node, e))
+        
+        # loop till we have these kind of nodes (indegree == outDegree == 1) and any one edge(incomming and outgoing) is "e" 
+        # 1) -e- N -e-
+        # 2) -call- N -e-
+        # 3) -e- N -call-
+        isReduced = True
+        while isReduced:
+            isReduced = False
+            node, inDeg, outDeg = None, None, None
+            src, node, e1, e2 = None, None, None, None
+            for _node, (_inDeg, _outDeg) in degree.items():
+                if len(_inDeg) == len(_outDeg) == 1:
+                    for (_src, _e1), _e2 in zip(_inDeg, _outDeg):
+                        if _e1.edge == "e" or _e2.edge == "e":
+                            src, node, e1, e2 = _src, _node, _e1, _e2
+            
+            if node is not None:
+                isReduced = True
+                # print(f"{src} -> {e1} -> {node} -> {e2} -> {e2.node}")
+                self.removeEdge(src, e1)
+                self.removeEdge(node, e2)
+                edge = None
+                if e1.edge == e2.edge == "e":
+                    edge = self.addEdge(src, e2.node, "e")
+                elif e1.edge == "e":
+                    edge = self.addEdge(src, e2.node, e2.edge)
+                elif e2.edge == "e":
+                    edge = self.addEdge(src, e2.node, e1.edge)
+
+                # merge  S -e- N -e- D => S -e- D
+                # merge  S -f- N -e- D => S -f- D
+                # merge  S -e- N -f- D => S -f- D
+                degree.pop(node)
+                degree[e2.node][0].remove((node, e2))
+                degree[src][1].remove(e1)
+                degree[src][1].add(edge)
+                degree[e2.node][0].add((src, edge))                    
+                    
 
     def setStart(self, start):
         self._start = start
@@ -32,7 +83,18 @@ class Graph():
         if dst not in self._graph:
             self._graph[dst] = []
         
+        edge = Edge(dst, name)
         self._graph[src].append(Edge(dst, name))
+        self._nodes.add(src)
+        self._nodes.add(dst)
+        return edge
+    
+    def removeNode(self, node):
+        self._graph.remove(node)
+    
+    def removeEdge(self, src, edge):
+        if edge in self._graph[src]:
+            self._graph[src].remove(edge)
 
     def exportToDot(self, fp):
         for node, edges in self._graph.items():
@@ -40,7 +102,6 @@ class Graph():
                 fp.write(f"""{node} -> {e.node}[label="{e.edge}"]\n""")
 
     def print(self):
-        print(self._name)
         pprint(self._graph)
 
     def update(self, graph_list):
@@ -103,7 +164,9 @@ if __name__ == "__main__" :
                 fname, src, dst, ename = line.split('\n')[0].split(',')
                 graph.addEdge(extracted_part + "_" + src, extracted_part + "_" + dst, ename)
         graph_list[extracted_part] = graph
+        graph.removeLoop()
     
+    # exportDOTFormat(graph_list, {"main"})
     visited = set()
     queue = []
     queue.append("main")
@@ -121,4 +184,3 @@ if __name__ == "__main__" :
 
     graph_list.get("main").print()
     exportDOTFormat(graph_list, visited)
-    
