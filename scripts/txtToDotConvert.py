@@ -1,9 +1,7 @@
-import sys
-import copy
 import os
 from collections import namedtuple
 from pprint import pprint
-from queue import Queue
+
 
 Edge = namedtuple("Edge", ["node", "edge"])
 
@@ -137,6 +135,8 @@ class Graph():
 def exportDOTFormat(graphList, lis):
     with open("./graph.dot", "w") as fp:
         fp.write("digraph main {\n")
+        lis.remove("main")
+        graph_list.get("main").exportToDot(fp)
         for name in lis:
             graph_list.get(name).exportToDot(fp)
         fp.write("}")
@@ -173,14 +173,14 @@ if __name__ == "__main__" :
 
     while len(queue)> 0:
         item = queue.pop()
-        print(queue)
+        # print(queue)
         if item in visited: continue
         visited.add(item)
         graph = graph_list.get(item)
         next_update = graph.update(graph_list)
         for item in next_update:
             queue.append(item)
-        print(next_update)
+        # print(next_update)
 
     graph_list.get("main").print()
     exportDOTFormat(graph_list, visited)
