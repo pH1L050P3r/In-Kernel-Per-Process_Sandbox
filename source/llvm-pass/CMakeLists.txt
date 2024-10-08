@@ -17,3 +17,4 @@ if (${LLVM_VERSION_MAJOR} VERSION_GREATER_EQUAL 10)
 endif ()
 
 add_subdirectory(CallGraphPass)  # Use your pass name here.
+add_subdirectory(DummyCallAddPass)
