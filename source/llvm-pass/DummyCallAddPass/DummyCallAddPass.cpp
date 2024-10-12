@@ -25,37 +25,41 @@ using namespace llvm;
 namespace {
   struct DummyCallAddPass : public FunctionPass {
     static char ID;
+    const std::string libc_function = "/home/siddharth/In-Kernel-Per-Process_Sandbox/source/llvm-pass/DummyCallAddPass/musl_functions.txt";
+    std::map<std::string, uint32_t> libc_func; 
 
-    DummyCallAddPass() : FunctionPass(ID) {}
+    DummyCallAddPass() : FunctionPass(ID) {
+      std::ifstream inFile(libc_function);
+      if (!inFile) {
+          errs() << "Could not open the file for reading: " << libc_function << "\n";
+          return;
+      }
+      std::string element;
+      uint32_t elementId;
+      for(int i = 0; i < 1613; i++){
+          inFile >> element >> elementId;
+          libc_func.insert({element, elementId});
+      }
+      inFile.close();
+    }
 
     bool runOnFunction(Function &Func){
+      errs() << libc_func.size() << "\n";
       LLVMContext &context = Func.getParent()->getContext();
       IRBuilder<> builder(context);
-      FunctionType *printfType = FunctionType::get(IntegerType::getInt32Ty(context), PointerType::get(Type::getInt8Ty(context), 0), true);
-      FunctionCallee printfFunc = Func.getParent()->getOrInsertFunction("printf", printfType);
+      FunctionCallee dummySyscallFunc = Func.getParent()->getOrInsertFunction("dummy", Type::getInt32Ty(context), Type::getInt32Ty(context));
       std::string values;
-      bool isInsert = false;
       for (auto &BB : Func) {
           for (auto &I : BB) {
-              if(isInsert){
+              auto *callInst = dyn_cast<CallInst>(&I);
+              if (callInst && libc_func.find(callInst->getCalledFunction()->getName().str()) != libc_func.end()) {
+                  errs() << "I am here " << callInst->getCalledFunction()->getName().str() << "\n"; 
                   builder.SetInsertPoint(&BB, std::next(BB.getFirstInsertionPt()));
-                  Value *strValue = builder.CreateGlobalStringPtr(values);
-                  builder.SetInsertPoint(&I);
-                  builder.CreateCall(printfFunc, {strValue});
-                  isInsert = false;
-              }
-              if (auto *callInst = dyn_cast<CallInst>(&I)) {
-                  builder.SetInsertPoint(&BB, std::next(BB.getFirstInsertionPt()));
-                  Value *strValue = builder.CreateGlobalStringPtr(callInst->getCalledFunction()->getName().str() + " Called \n");
+                  Value *value = builder.getInt32(libc_func[callInst->getCalledFunction()->getName().str()]);
                   builder.SetInsertPoint(callInst);
-                  builder.CreateCall(printfFunc, {strValue});
-                  isInsert = true;
+                  builder.CreateCall(dummySyscallFunc, {value});
                   values = callInst->getCalledFunction()->getName().str() + " return \n";
               }
-          }
-          if(isInsert){
-            // TODO: Add new basic block and insert in between
-              isInsert = false;
           }
       }
       return true;
