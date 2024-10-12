@@ -19,7 +19,7 @@ p:
 	func_defined();
 	for(int i = 0; i < 400; i++)
 	{
-		printf("Hello");
+		printf("Hello\n");
 	}
 	
 	return 0;
