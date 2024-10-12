@@ -17,9 +17,9 @@ p:
 	if(x > 10)
 		printf("Hello World\n");
 	func_defined();
-	while (getchar() == 'a')
+	for(int i = 0; i < 400; i++)
 	{
-		main();
+		printf("Hello");
 	}
 	
 	return 0;
