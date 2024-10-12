@@ -66,9 +66,11 @@ def extract_functions(so_file):
             print("No weak functions found.")
 
         pprint(all_function_list_unique)
+        index = 1
         with open("musl_function_list.txt", "w") as fp:
             for item in all_function_list_unique:
-                fp.write(f"{item[1]}\n")
+                fp.write(f"{item[1]} {index}\n")
+                index +=1
     except Exception as e:
         print(f"Error: {str(e)}")
 
