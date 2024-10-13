@@ -52,28 +52,64 @@ This project is part of the E0-256 (Autumn 2024) course at IISc Bangalore. The g
 4. **Build and Compile Linux Kernel**:
    Use the official documentation to build and compile the Linux kernel with the custom modules required for this project.
 
+# In-Kernel Per-Process Sandbox
+
 ## How to Build and Run
+==============================
 
-### Step 1: Compile LLVM Passes
-Compile the necessary LLVM passes, which will extract the library call policies and insert dummy system calls into the C program.
+Step 1: Compile LLVM Passes
+----------------------------
+Navigate to the `llvm-passes` directory and run the following command:
 
-### Step 2: Compile MUSL
-Compile MUSL, which is needed for system-level operations. Make sure to configure it correctly and install it on your system.
+    make
 
-### Step 3: Compile the `dummy.do` File
-Next, compile the `dummy.do` file, which is responsible for inserting dummy system calls that will be used for tracking library calls in the sandbox.
 
-### Step 4: Compile the `mbedTLS` Library
-Compile the `mbedTLS` library, which will be used to benchmark and test your sandbox implementation.
+Step 2: Compile MUSL
+---------------------
+To compile MUSL, follow these steps:
 
-### Step 5: Compile the `crypt_and_hash` Program
-Within the `mbedTLS` library, compile the `crypt_and_hash` program, which will be used for testing the sandbox.
+    ./configure --prefix=/usr/local/musl
+    make
+    sudo make install
 
-### Step 6: Generate the Library Call Graph (`graph.dot`)
-Once the passes are compiled and run on the input C program, generate a `.dot` file that represents the library call graph. This file will be used for visualization and analysis.
 
-### Step 7: Visualize the Call Graph (`graph.png`)
-Convert the `.dot` file into a PNG image using Graphviz to visually represent the library call graph. This will allow you to inspect the call flow policy extracted from the program.
+Step 3: Compile `dummy.do`
+----------------------------
+Navigate to the `dummy` directory and compile the `dummy.do` file:
+
+    make
+
+
+Step 4: Compile `mbedTLS` Library
+----------------------------------
+Go to the `mbedtls` directory, create a build directory, and compile:
+
+    mkdir build && cd build
+    cmake ..
+    make
+
+
+Step 5: Compile `mbedTLS/programs/aes/crypt_and_hash`
+-----------------------------------------------------
+Navigate to the `mbedtls/programs/aes` directory and compile the `crypt_and_hash` program:
+
+    gcc -o crypt_and_hash crypt_and_hash.c -lmbedtls -lmbedcrypto -lmbedx509
+
+
+Step 6: Build `graph.dot`
+-------------------------
+Run the LLVM pass to generate a DOT format library call graph:
+
+    ./extract_policy input_program.c -o graph.dot
+
+
+Step 7: Build `graph.png`
+-------------------------
+Use Graphviz to convert the DOT file to a PNG image:
+
+    dot -Tpng graph.dot -o graph.png
+
+
 
 ## Benchmarks
 
