@@ -52,7 +52,7 @@ namespace {
       for (auto &BB : Func) {
           for (auto &I : BB) {
               auto *callInst = dyn_cast<CallInst>(&I);
-              if (callInst && libc_func.find(callInst->getCalledFunction()->getName().str()) != libc_func.end()) {
+              if (callInst && callInst->getCalledFunction() && libc_func.find(callInst->getCalledFunction()->getName().str()) != libc_func.end()) {
                   errs() << "I am here " << callInst->getCalledFunction()->getName().str() << "\n"; 
                   builder.SetInsertPoint(&BB, std::next(BB.getFirstInsertionPt()));
                   Value *value = builder.getInt32(libc_func[callInst->getCalledFunction()->getName().str()]);
