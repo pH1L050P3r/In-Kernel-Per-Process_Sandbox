@@ -25,7 +25,7 @@ using namespace llvm;
 namespace {
   struct DummyCallAddPass : public FunctionPass {
     static char ID;
-    const std::string libc_function = "/home/siddharth/In-Kernel-Per-Process_Sandbox/source/llvm-pass/DummyCallAddPass/musl_functions.txt";
+    const std::string libc_function = std::string(__FILE__).substr(0, std::string(__FILE__).find_last_of("/\\")) + "/musl_functions.txt";
     std::map<std::string, uint32_t> libc_func; 
 
     DummyCallAddPass() : FunctionPass(ID) {
