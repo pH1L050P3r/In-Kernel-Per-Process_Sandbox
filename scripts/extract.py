@@ -6,10 +6,7 @@ from pprint import pprint
 
 def extract_functions(so_file):
     try:
-        # Call readelf to get symbols from the shared library
         result = subprocess.run(['readelf', '-Ws', so_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-        # Check for any errors
         if result.returncode != 0:
             print(f"Error: {result.stderr.strip()}")
             return
@@ -41,16 +38,13 @@ def extract_functions(so_file):
 
         # Output the list of defined global functions with addresses
         if defined_functions:
-            # print("Defined global functions in the shared library (with addresses):")
             for func, addr in defined_functions:
-                # print(f"- {func} at address {addr}")
                 all_function_list_unique.add((addr, func))
         else:
             print("No defined global functions found.")
 
         # Output the list of undefined functions (functions dynamically linked at runtime)
         if undefined_functions:
-            # print("\nUndefined functions (to be resolved at runtime):")
             for func in undefined_functions:
                 print(f"- {func}")
         else:
@@ -58,9 +52,7 @@ def extract_functions(so_file):
 
         # Output the list of weak functions with addresses
         if weak_functions:
-            # print("\nWeak functions (can be overridden, with addresses):")
             for func, addr in weak_functions:
-                # print(f"- {func} at address {addr}")
                 all_function_list_unique.add((addr, func))
         else:
             print("No weak functions found.")
