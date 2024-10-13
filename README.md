@@ -66,6 +66,7 @@ This project is part of the E0-256 (Autumn 2024) course at IISc Bangalore. The g
 Step 1: Compile LLVM Passes
 ----------------------------
 Navigate to the `llvm-passes` directory and run the following command:
+
     mkdir build
     cd build
     cmake ..
