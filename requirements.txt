@@ -5,3 +5,16 @@ python3.8
 LLVM_HOME=/usr/bin/llvm-as-12
 LLVM_DIR=/usr/lib/llvm-12/lib/cmake/llvm
 PATH=/usr/local/musl/bin:/usr/lib/llvm-12/bin/:$PATH
+
+
+# For mbedTls Library all
+make CC="musl-clang" CXX="clang++" CFLAGS="-Xclang -load -Xclang /home/siddharth/In-Kernel-Per-Process_Sandbox/source/llvm-pass/build/CallGraphPass/libCallGraphPass.*" 
+
+#compile aes/crypt_and_hash :
+make CC="musl-clang" CXX="clang++" CFLAGS="-fno-builtin -Xclang -load -Xclang /home/siddharth/In-Kernel-Per-Process_Sandbox/source/llvm-pass/build/CallGraphPass/libCallGraphPass.* -Xclang -load -Xclang /home/siddharth/In-Kernel-Per-Process_Sandbox/source/llvm-pass/build/DummyCallAddPass/libDummyCallAddPass.*  -Wl /home/siddharth/In-Kernel-Per-Process_Sandbox/source/dummy/build/libdummy.so" aes/crypt_and_hash
+
+# musl compile : 
+./configuration CC="clang" CXX="clang++" CFLAGS="-fno-builtin -Xclang -load -Xclang /home/siddharth/In-Kernel-Per-Process_Sandbox/source/llvm-pass/build/CallGraphPass/libCallGraphPass.so /home/siddharth/In-Kernel-Per-Process_Sandbox/source/llvm-pass/build/functionListPass/libfunctionListPass.so" --prefix=./build
+
+# For mbedTls lib only with dummy pass also
+make CC="musl-clang" CXX="clang++" CFLAGS="-Xclang -load -Xclang /home/siddharth/In-Kernel-Per-Process_Sandbox/source/llvm-pass/build/CallGraphPass/libCallGraphPass.* -Xclang -load -Xclang /home/siddharth/In-Kernel-Per-Process_Sandbox/source/llvm-pass/build/DummyCallAddPass/libDummyCallAddPass.*  -Wl /home/siddharth/In-Kernel-Per-Process_Sandbox/source/dummy/build/libdummy.so" lib
