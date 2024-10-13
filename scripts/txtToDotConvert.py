@@ -95,6 +95,7 @@ class Graph():
             self._graph[src].remove(edge)
 
     def exportToDot(self, fp):
+        #TODO : add edges through DFS/BFS start from start
         for node, edges in self._graph.items():
             for e in edges:
                 fp.write(f"""{node} -> {e.node}[label="{e.edge}"]\n""")
