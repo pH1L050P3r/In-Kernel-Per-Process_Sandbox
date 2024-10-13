@@ -11,6 +11,12 @@ Ensure the following are installed:
 - Python 3.8
 - `musl` toolchain
 
+Ensure the following are enviroment variables are there:
+
+- LLVM_HOME=/usr/bin/llvm-as-12
+- LLVM_DIR=/usr/lib/llvm-12/lib/cmake/llvm
+- PATH=/usr/local/musl/bin:/usr/lib/llvm-12/bin/:$PATH
+
 # In-Kernel Per-Process Sandbox
 
 ## Overview
@@ -60,7 +66,9 @@ This project is part of the E0-256 (Autumn 2024) course at IISc Bangalore. The g
 Step 1: Compile LLVM Passes
 ----------------------------
 Navigate to the `llvm-passes` directory and run the following command:
-
+    mkdir build
+    cd build
+    cmake ..
     make
 
 
@@ -73,34 +81,35 @@ To compile MUSL, follow these steps:
     sudo make install
 
 
-Step 3: Compile `dummy.do`
+Step 3: Compile `libdummy.so`
 ----------------------------
-Navigate to the `dummy` directory and compile the `dummy.do` file:
+Navigate to the `dummy` directory and compile the `libdummy.so` file:
 
-    make
+    ./build.sh
 
 
 Step 4: Compile `mbedTLS` Library
 ----------------------------------
 Go to the `mbedtls` directory, create a build directory, and compile:
 
-    mkdir build && cd build
-    cmake ..
-    make
+    make CC="musl-clang" CXX="clang++" CFLAGS="-Xclang -load -Xclang ../In-Kernel-Per-Process_Sandbox/source/llvm-pass/build CallGraphPass/libCallGraphPass.* -Xclang -load -Xclang ../In-Kernel-Per-Process_Sandbox/source/llvm-pass/build/DummyCallAddPass/libDummyCallAddPass.*  -Wl ../In-Kernel-Per-Process_Sandbox/source/dummy/build/libdummy.so" lib
 
 
-Step 5: Compile `mbedTLS/programs/aes/crypt_and_hash`
+Step 5: Compile `mbedtls/programs/aes/crypt_and_hash`
 -----------------------------------------------------
-Navigate to the `mbedtls/programs/aes` directory and compile the `crypt_and_hash` program:
+Navigate to the `mbedtls/programs` directory and compile the `crypt_and_hash` program:
 
-    gcc -o crypt_and_hash crypt_and_hash.c -lmbedtls -lmbedcrypto -lmbedx509
+    make CC="musl-clang" CXX="clang++" CFLAGS="-Xclang -load -Xclang ../In-Kernel-Per-Process_Sandbox/source/llvm-pass/build CallGraphPass/libCallGraphPass.* -Xclang -load -Xclang ../In-Kernel-Per-Process_Sandbox/source/llvm-pass/build/DummyCallAddPass/libDummyCallAddPass.*  -Wl ../In-Kernel-Per-Process_Sandbox/source/dummy/build/libdummy.so" aes/crypt_and_hash
 
 
 Step 6: Build `graph.dot`
 -------------------------
 Run the LLVM pass to generate a DOT format library call graph:
 
-    ./extract_policy input_program.c -o graph.dot
+    cp mbedtls/programs/ENFA_main.txt mbedtls/library
+    cp In-Kernel-Per-Process_Sandbox/scripts/txtToDotConvert.py mbedtls/library
+    cd mbedtls/library
+    python3 python3 txtToDotConvert.py
 
 
 Step 7: Build `graph.png`
@@ -108,7 +117,6 @@ Step 7: Build `graph.png`
 Use Graphviz to convert the DOT file to a PNG image:
 
     dot -Tpng graph.dot -o graph.png
-
 
 
 ## Benchmarks
