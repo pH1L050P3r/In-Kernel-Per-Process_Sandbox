@@ -13,7 +13,7 @@ Ensure the following are installed:
 
 Ensure the following are enviroment variables are there:
 
-- LLVM_HOME=/usr/bin/llvm-as-12
+- LLVM_HOME=/usr/lib/llvm-12/
 - LLVM_DIR=/usr/lib/llvm-12/lib/cmake/llvm
 - PATH=/usr/local/musl/bin:/usr/lib/llvm-12/bin/:$PATH
 
@@ -92,14 +92,15 @@ Step 4: Compile `mbedTLS` Library
 ----------------------------------
 Go to the `mbedtls` directory, create a build directory, and compile:
 
-    make CC="musl-clang" CXX="clang++" CFLAGS="-Xclang -load -Xclang ../In-Kernel-Per-Process_Sandbox/source/llvm-pass/build CallGraphPass/libCallGraphPass.* -Xclang -load -Xclang ../In-Kernel-Per-Process_Sandbox/source/llvm-pass/build/DummyCallAddPass/libDummyCallAddPass.*  -Wl ../In-Kernel-Per-Process_Sandbox/source/dummy/build/libdummy.so" lib
+     make CC="musl-clang" CXX="clang++" CFLAGS="-Xclang -load -Xclang ~/In-Kernel-Per-Process_Sandbox/source/llvm-pass/build/CallGraphPass/libCallGraphPass.so -Xclang -load -Xclang ~/In-Kernel-Per-Process_Sandbox/source/llvm-pass/build/DummyCallAddPass/libDummyCallAddPass.so -Wl,-L~/In-Kernel-Per-Process_Sandbox/source/dummy/build -ldummy" lib
+
 
 
 Step 5: Compile `mbedtls/programs/aes/crypt_and_hash`
 -----------------------------------------------------
 Navigate to the `mbedtls/programs` directory and compile the `crypt_and_hash` program:
 
-    make CC="musl-clang" CXX="clang++" CFLAGS="-Xclang -load -Xclang ../In-Kernel-Per-Process_Sandbox/source/llvm-pass/build CallGraphPass/libCallGraphPass.* -Xclang -load -Xclang ../In-Kernel-Per-Process_Sandbox/source/llvm-pass/build/DummyCallAddPass/libDummyCallAddPass.*  -Wl ../In-Kernel-Per-Process_Sandbox/source/dummy/build/libdummy.so" aes/crypt_and_hash
+     make CC="musl-clang" CXX="clang++" CFLAGS="-Xclang -load -Xclang ~/In-Kernel-Per-Process_Sandbox/source/llvm-pass/build/CallGraphPass/libCallGraphPass.so -Xclang -load -Xclang ~/In-Kernel-Per-Process_Sandbox/source/llvm-pass/build/DummyCallAddPass/libDummyCallAddPass.so -Wl ~/In-Kernel-Per-Process_Sandbox/source/dummy/build/libdummy.so" aes/crypt_and_hash
 
 
 Step 6: Build `graph.dot`
@@ -109,7 +110,7 @@ Run the LLVM pass to generate a DOT format library call graph:
     cp mbedtls/programs/ENFA_main.txt mbedtls/library
     cp In-Kernel-Per-Process_Sandbox/scripts/txtToDotConvert.py mbedtls/library
     cd mbedtls/library
-    python3 python3 txtToDotConvert.py
+    python3 txtToDotConvert.py
 
 
 Step 7: Build `graph.png`
