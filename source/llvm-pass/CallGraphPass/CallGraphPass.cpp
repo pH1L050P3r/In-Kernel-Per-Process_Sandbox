@@ -64,10 +64,9 @@ namespace {
         }
       }
 
-      for(uint64_t node : endNodes){
-        errs() << "endnode : " << node << " \n"; 
-      }
-
+      // for(uint64_t node : endNodes){
+      //   errs() << "endnode : " << node << " \n"; 
+      // }
 
       for(auto n1 : endNodes){
         for(auto n2 : recursiveCallEnd){
@@ -105,7 +104,7 @@ namespace {
           start = end;
           end = gID++;
           funcReturn_vec.push_back(end);
-          errs() << " " << end << "\n";
+          // errs() << " " << end << "\n";
           graph[start].push_back({bbID[(&func.getEntryBlock())], calledFunction->getName().str()});
         } else{
           start = end;
@@ -148,7 +147,7 @@ namespace {
 
     virtual bool runOnFunction(Function &Func) {
       fname.insert(Func.getName().str());
-      errs() << Func.getName().str() << "\n";
+      // errs() << Func.getName().str() << "\n";
       return false;
     }
 
