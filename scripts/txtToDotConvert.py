@@ -1,6 +1,7 @@
 import os
 from collections import namedtuple
 from pprint import pprint
+from queue import Queue
 
 
 Edge = namedtuple("Edge", ["node", "edge"])
@@ -77,12 +78,12 @@ class Graph():
     
     def addEdge(self, src, dst, name):
         if src not in self._graph:
-            self._graph[src] = []
+            self._graph[src] = set()
         if dst not in self._graph:
-            self._graph[dst] = []
+            self._graph[dst] = set()
         
         edge = Edge(dst, name)
-        self._graph[src].append(Edge(dst, name))
+        self._graph[src].add(Edge(dst, name))
         self._nodes.add(src)
         self._nodes.add(dst)
         return edge
@@ -93,12 +94,6 @@ class Graph():
     def removeEdge(self, src, edge):
         if edge in self._graph[src]:
             self._graph[src].remove(edge)
-
-    def exportToDot(self, fp):
-        #TODO : add edges through DFS/BFS start from start
-        for node, edges in self._graph.items():
-            for e in edges:
-                fp.write(f"""{node} -> {e.node}[label="{e.edge}"]\n""")
 
     def print(self):
         pprint(self._graph)
@@ -124,11 +119,12 @@ class Graph():
             )
             # change code here if don't want label over call/return edge just replace it with epsillon
             self.addEdge(caller, calle, f"call_{f}")
-            self.addEdge(ret_from, ret_to, f"ret_{f}")
+            graph_list.get(f).addEdge(ret_from, ret_to, f"ret_{f}")
         return func
                 
 
     def exportToDot(self, fp):
+        self.print()
         for node, edges in self._graph.items():
             for e in edges:
                 fp.write(f"""\t{node} -> {e.node}[label="{e.edge}"]\n""")
@@ -184,5 +180,5 @@ if __name__ == "__main__" :
             queue.append(item)
         # print(next_update)
 
-    graph_list.get("main").print()
+    # graph_list.get("main").print()
     exportDOTFormat(graph_list, visited)
