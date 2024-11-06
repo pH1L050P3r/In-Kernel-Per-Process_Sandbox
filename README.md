@@ -10,6 +10,8 @@ Ensure the following are installed:
 - Clang 12
 - Python 3.8
 - `musl` toolchain
+- ebpf enabled kernel
+- bcc (sudo apt-get install bpfcc-tools linux-headers-$(uname -r)) (ubuntu)
 
 Ensure the following are enviroment variables are there:
 
