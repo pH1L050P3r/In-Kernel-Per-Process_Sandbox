@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include<stdlib.h>
 
 void bar(){
 	while(getchar() == 'a')
