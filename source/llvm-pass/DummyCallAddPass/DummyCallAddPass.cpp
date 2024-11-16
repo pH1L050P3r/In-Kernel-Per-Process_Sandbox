@@ -36,7 +36,7 @@ namespace {
       }
       std::string element;
       uint32_t elementId;
-      for(int i = 0; i < 1613; i++){
+      for(int i = 0; i < 2671; i++){
           inFile >> element >> elementId;
           libc_func.insert({element, elementId});
       }

@@ -1,7 +1,6 @@
 import os
 from collections import namedtuple
 from pprint import pprint
-from queue import Queue
 
 
 Edge = namedtuple("Edge", ["node", "edge"])
@@ -13,56 +12,6 @@ class Graph():
         self._graph = dict()
         self._name = name
         self._nodes = set()
-
-    def removeLoop(self):
-        degree = {}
-        for node in self._nodes:
-            degree[node] = [set(), set()]
-        
-        # incomming = {(from, edge), ...} [0]
-        # outgoing = {edge, ...}          [1]
-        for node in self._nodes:
-            for e in self._graph[node]:
-                degree[node][1].add(e)
-                degree[e.node][0].add((node, e))
-        
-        # loop till we have these kind of nodes (indegree == outDegree == 1) and any one edge(incomming and outgoing) is "e" 
-        # 1) -e- N -e-
-        # 2) -call- N -e-
-        # 3) -e- N -call-
-        isReduced = True
-        while isReduced:
-            isReduced = False
-            node, inDeg, outDeg = None, None, None
-            src, node, e1, e2 = None, None, None, None
-            for _node, (_inDeg, _outDeg) in degree.items():
-                if len(_inDeg) == len(_outDeg) == 1:
-                    for (_src, _e1), _e2 in zip(_inDeg, _outDeg):
-                        if _e1.edge == "e" or _e2.edge == "e":
-                            src, node, e1, e2 = _src, _node, _e1, _e2
-            
-            if node is not None:
-                isReduced = True
-                # print(f"{src} -> {e1} -> {node} -> {e2} -> {e2.node}")
-                self.removeEdge(src, e1)
-                self.removeEdge(node, e2)
-                edge = None
-                if e1.edge == e2.edge == "e":
-                    edge = self.addEdge(src, e2.node, "e")
-                elif e1.edge == "e":
-                    edge = self.addEdge(src, e2.node, e2.edge)
-                elif e2.edge == "e":
-                    edge = self.addEdge(src, e2.node, e1.edge)
-
-                # merge  S -e- N -e- D => S -e- D
-                # merge  S -f- N -e- D => S -f- D
-                # merge  S -e- N -f- D => S -f- D
-                degree.pop(node)
-                degree[e2.node][0].remove((node, e2))
-                degree[src][1].remove(e1)
-                degree[src][1].add(edge)
-                degree[e2.node][0].add((src, edge))                    
-                    
 
     def setStart(self, start):
         self._start = start
@@ -94,6 +43,59 @@ class Graph():
     def removeEdge(self, src, edge):
         if edge in self._graph[src]:
             self._graph[src].remove(edge)
+    
+    def edges(self):
+        for node, edges in self._graph.items():
+            for edge in edges:
+                yield node, edge.node, edge.edge
+
+    def removeLoop(self):
+        degree = {}
+        for node in self._nodes:
+            degree[node] = [set(), set()]
+        
+        # incomming = {(from, edge), ...} [0]
+        # outgoing = {edge, ...}          [1]
+        for node in self._nodes:
+            for e in self._graph[node]:
+                degree[node][1].add(e)
+                degree[e.node][0].add((node, e))
+        
+        # loop till we have these kind of nodes (indegree == outDegree == 1) and any one edge(incomming and outgoing) is "e" 
+        # 1) -e- N -e-
+        # 2) -call- N -e-
+        # 3) -e- N -call-
+        isReduced = True
+        while isReduced:
+            isReduced = False
+            node, inDeg, outDeg = None, None, None
+            src, node, e1, e2 = None, None, None, None
+            for _node, (_inDeg, _outDeg) in degree.items():
+                if len(_inDeg) == len(_outDeg) == 1:
+                    for (_src, _e1), _e2 in zip(_inDeg, _outDeg):
+                        if _e1.edge == "e" or _e2.edge == "e":
+                            src, node, e1, e2 = _src, _node, _e1, _e2
+            
+            if node is not None:
+                isReduced = True
+                self.removeEdge(src, e1)
+                self.removeEdge(node, e2)
+                edge = None
+                if e1.edge == e2.edge == "e":
+                    edge = self.addEdge(src, e2.node, "e")
+                elif e1.edge == "e":
+                    edge = self.addEdge(src, e2.node, e2.edge)
+                elif e2.edge == "e":
+                    edge = self.addEdge(src, e2.node, e1.edge)
+
+                # merge  S -e- N -e- D => S -e- D
+                # merge  S -f- N -e- D => S -f- D
+                # merge  S -e- N -f- D => S -f- D
+                degree.pop(node)
+                degree[e2.node][0].remove((node, e2))
+                degree[src][1].remove(e1)
+                degree[src][1].add(edge)
+                degree[e2.node][0].add((src, edge))                    
 
     def print(self):
         pprint(self._graph)
@@ -124,19 +126,35 @@ class Graph():
                 
 
     def exportToDot(self, fp):
-        self.print()
         for node, edges in self._graph.items():
             for e in edges:
                 fp.write(f"""\t{node} -> {e.node}[label="{e.edge}"]\n""")
 
+    @staticmethod
+    def construct_from_dot(filepath):
+        graph = Graph(name="restored_graph")
+        with open(filepath, 'r') as file:
+            for line in file:
+                line = line.strip()
+                if '->' not in line or '[label="' not in line:
+                    continue
+                parts = line.split("->")
+                src = parts[0].strip()
+                dst_label = parts[1].strip()
+                dst_part, label_part = dst_label.split("[label=")
+                dst = dst_part.strip()
+                label = label_part.replace('"]', '').strip('"')
+                graph.addEdge(src, dst, name=label)
+        return graph
 
-def exportDOTFormat(graphList, lis):
-    with open("./graph.dot", "w") as fp:
+
+def exportDOTFormat(graphList, lis,file_name):
+    with open(file_name, "w") as fp:
         fp.write("digraph main {\n")
         lis.remove("main")
-        graph_list.get("main").exportToDot(fp)
+        graphList.get("main").exportToDot(fp)
         for name in lis:
-            graph_list.get(name).exportToDot(fp)
+            graphList.get(name).exportToDot(fp)
         fp.write("}")
 
 
@@ -152,8 +170,8 @@ if __name__ == "__main__" :
         extracted_part = base_name[len("ENAF_"):-len(".txt")]
         graph = Graph(extracted_part)
         with open(file_name, 'r') as fp:
+            # building graph for each ENFA file
             lines = fp.readlines()
-            # lines = input_data.splitlines()
             start_state = extracted_part + "_" + lines[0].split("\n")[0].strip()
             final_states = extracted_part + "_" + lines[1].split("\n")[0].strip()
             graph.setStart(start_state)
@@ -164,21 +182,19 @@ if __name__ == "__main__" :
         graph_list[extracted_part] = graph
         graph.removeLoop()
     
-    # exportDOTFormat(graph_list, {"main"})
     visited = set()
     queue = []
     queue.append("main")
-
     while len(queue)> 0:
         item = queue.pop()
-        # print(queue)
         if item in visited: continue
         visited.add(item)
         graph = graph_list.get(item)
         next_update = graph.update(graph_list)
         for item in next_update:
             queue.append(item)
-        # print(next_update)
-
-    # graph_list.get("main").print()
-    exportDOTFormat(graph_list, visited)
+    file_path = "./graph.dot"
+    exportDOTFormat(graph_list, visited, file_path)
+    graph = Graph.construct_from_dot(file_path)
+    for u, v, e in graph.edges():
+        print(f"{u} -> {v} [label={e}]")

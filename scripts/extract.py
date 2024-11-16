@@ -44,18 +44,18 @@ def extract_functions(so_file):
             print("No defined global functions found.")
 
         # Output the list of undefined functions (functions dynamically linked at runtime)
-        if undefined_functions:
-            for func in undefined_functions:
-                print(f"- {func}")
-        else:
-            print("No undefined functions found.")
+        # if undefined_functions:
+        #     for func in undefined_functions:
+        #         print(f"- {func}")
+        # else:
+        #     print("No undefined functions found.")
 
         # Output the list of weak functions with addresses
-        if weak_functions:
-            for func, addr in weak_functions:
-                all_function_list_unique.add((addr, func))
-        else:
-            print("No weak functions found.")
+        # if weak_functions:
+        #     for func, addr in weak_functions:
+        #         all_function_list_unique.add((addr, func))
+        # else:
+        #     print("No weak functions found.")
 
         pprint(all_function_list_unique)
         index = 1
