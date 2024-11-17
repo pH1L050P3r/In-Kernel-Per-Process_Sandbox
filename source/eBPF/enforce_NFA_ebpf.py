@@ -2,33 +2,21 @@ from bcc import BPF
 import os
 import signal
 
+class Graph:
+    def __init__(self, dot_file):
+        self._graph = {}
+        self._start = None
+        self._end = None
+        self._heads = []
 
-class EBPFTracer:
-    def __init__(self, function_map_file, graph_file, libc_path, functions_to_trace):
-        self.function_map_file = function_map_file
-        self.graph_file = graph_file
-        self.libc_path = libc_path
-        self.functions_to_trace = functions_to_trace
-        self.bpf = None
-        self.graph_data = {}
-        self.start = None
-        self.end = None
-        self.function_map = {}
-        self.rev_function_map = {}
-        self.heads = []
-        self.next_func_call = None
-        self.function_call_list = []
+        self.build_from_dotfile(dot_file)
+        self._initialize()
 
-    def _reset(self):
-        self.heads = self.get_new_heads(["main_0"])
-        self.next_func_call = None
-        self.function_call_list = []
-
-    def construct_graph(self):
+    def build_from_dotfile(self, dot_file):
         graph = {}
         incoming_edges = {}
 
-        with open(self.graph_file, "r") as file:
+        with open(dot_file, "r") as file:
             for line in file:
                 line = line.strip()
                 if "->" not in line or '[label="' not in line:
@@ -59,9 +47,66 @@ class EBPFTracer:
         start_nodes = [node for node in graph if incoming_edges[node] == 0]
         end_nodes = [node for node in graph if not graph[node]]  # Nodes with no outgoing edges
 
-        self.graph_data = graph
-        self.start = start_nodes
-        self.end = end_nodes
+        self._graph = graph
+        self._start = start_nodes
+        self._end = end_nodes
+
+    def _initialize(self):
+        self._heads = ["main_0"]
+        self.next_func_call = None
+        self.function_call_list = []
+        self.update_epsillon_heads()
+        
+    def reset(self):
+        self._initialize()
+
+    def get_heads(self):
+        return self._heads
+
+    def update_epsillon_heads(self):
+        new_heads = []
+        stack = list(self._heads)
+        visited = set()
+        while stack:
+            curr = stack.pop()
+            if curr not in visited:
+                visited.add(curr)
+            new_heads.append(curr)
+            for node, label in self._graph.get(curr, []):
+                if label == "e" or label.startswith("call_") or label.startswith("ret_") or curr.split("_")[0] == label:
+                    stack.append(node)
+        self._heads = new_heads
+
+    def check_func_call(self, next_func_call):
+        if not next_func_call:
+            return False
+        
+        new_heads = set()
+        for head in self._heads:
+            edges = self._graph[head]
+            for e in edges:
+                if e[1] == next_func_call:
+                    new_heads.add(e[0])
+
+        self._heads = list(new_heads)
+        self.update_epsillon_heads()
+        if new_heads: return  True
+        return False
+
+
+
+class EBPFTracer:
+    def __init__(self, function_map_file, graph, libc_path, functions_to_trace):
+        self.function_map_file = function_map_file
+        self.graph = graph
+        self.libc_path = libc_path
+        self.functions_to_trace = functions_to_trace
+        self.bpf = None
+        self.function_map = {}
+        self.rev_function_map = {}
+        self.next_func_call = None
+        self.function_call_list = []
+
 
     def read_function_map(self):
         function_map = {}
@@ -76,35 +121,6 @@ class EBPFTracer:
                 rev_function_map[int(func_id)] = func_name
         self.function_map = function_map
         self.rev_function_map = rev_function_map
-
-    def get_new_heads(self, heads):
-        new_heads = []
-        stack = list(heads)
-        visited = set()
-        while stack:
-            curr = stack.pop()
-            if curr not in visited:
-                visited.add(curr)
-            new_heads.append(curr)
-            for node, label in self.graph_data.get(curr, []):
-                if label == "e" or label.startswith("call_") or label.startswith("ret_") or curr.split("_")[0] == label:
-                    stack.append(node)
-        return new_heads
-
-    def check_func_call(self, heads, next_func_call):
-        if not next_func_call:
-            return [], False
-        
-        new_heads = set()
-        for head in heads:
-            edges = self.graph_data[head]
-            for e in edges:
-                if e[1] == next_func_call:
-                    new_heads.add(e[0])
-        
-        if new_heads:
-            return list(new_heads), True
-        return [], False
 
     def generate_ebpf_program(self):
         base_program = """
@@ -208,23 +224,23 @@ int trace_lib_{func}_exit(struct pt_regs *ctx) {{
             print("func_call : ", func)
             print("pid : ", pid)
             print("-" * 80)
-            new_heads, flag = self.check_func_call(self.heads, self.next_func_call)
+            old_heads = self.graph.get_heads()
+            # print(self.next_func_call, old_heads)
+            flag = self.graph.check_func_call(self.next_func_call)
+            new_heads = self.graph.get_heads()
             if not flag:
                 print("Killing process with ID : ", pid)
                 os.kill(pid, signal.SIGKILL)
                 print(self.function_call_list)
-                self._reset()
+                graph.reset()
             else:
-                old_heads = self.heads
-                self.heads = self.get_new_heads(new_heads)
-                # print(self.heads, new_heads, old_heads)
+                # print(old_heads, new_heads)
                 self.function_call_list.append(func)
-                if self.end[0] in self.heads and len(self.heads) == 1:
+                if self.graph._end[0] in new_heads and len(new_heads) == 1:
                     print(self.function_call_list)
-                    self._reset()
+                    graph.reset()
 
     def start_tracing(self):
-        self.heads = self.get_new_heads(["main_0"])
         self.bpf["output"].open_perf_buffer(self.print_event, page_cnt=2 << 10)
         while True:
             self.bpf.perf_buffer_poll(5)
@@ -239,13 +255,13 @@ def get_function_list(file_path):
 if __name__ == "__main__":
     file_path = "library_function_list.txt"
     function_list = get_function_list(file_path)
+    graph = Graph(dot_file="./graph.dot")
     tracer = EBPFTracer(
         function_map_file="musl_functions.txt",
-        graph_file="./graph.dot",
+        graph=graph,
         libc_path="/lib/x86_64-linux-gnu/libc.so.6",
         functions_to_trace=["getchar", "printf", "malloc", "free"]
     )
     tracer.read_function_map()
-    tracer.construct_graph()
     tracer.initialize_bpf()
     tracer.start_tracing()
