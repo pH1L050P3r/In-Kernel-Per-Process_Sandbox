@@ -2,6 +2,41 @@ from bcc import BPF
 import os
 import signal
 
+class DataLoader:
+    def __init__(self, function_map_path="musl_functions.txt", function_list_path="library_function_list.txt"):
+        self._path_lib_func = function_map_path
+        self._lib_called_func_path = function_list_path
+        self.function_map = {}
+        self.rev_function_map = {}
+        self.library_function_called = []
+        self.read_function_list()
+        self.read_function_map()
+
+    def read_function_list(self):
+        with open(self._lib_called_func_path, "r") as file:
+            functions = [line.strip() for line in file if line.strip()]
+        self.library_function_called = functions
+    
+    def read_function_map(self):
+        function_map = {}
+        rev_function_map = {}
+        with open(self._path_lib_func, "r") as file:
+            for line in file:
+                parts = line.strip().split()
+                if len(parts) != 2:
+                    continue
+                func_name, func_id = parts
+                function_map[func_name] = int(func_id)
+                rev_function_map[int(func_id)] = func_name
+        self.function_map = function_map
+        self.rev_function_map = rev_function_map
+
+    def get_lib_function_map(self):
+        return self.function_map, self.rev_function_map
+    
+    def get_library_function_called(self):
+        return self.library_function_called
+
 class Graph:
     def __init__(self, dot_file):
         self._graph = {}
@@ -96,31 +131,16 @@ class Graph:
 
 
 class EBPFTracer:
-    def __init__(self, function_map_file, graph, libc_path, functions_to_trace):
-        self.function_map_file = function_map_file
+    def __init__(self, graph, libc_path, functions_to_trace, function_map, rev_function_map):
         self.graph = graph
         self.libc_path = libc_path
         self.functions_to_trace = functions_to_trace
-        self.bpf = None
-        self.function_map = {}
-        self.rev_function_map = {}
-        self.next_func_call = None
-        self.function_call_list = []
-
-
-    def read_function_map(self):
-        function_map = {}
-        rev_function_map = {}
-        with open(self.function_map_file, "r") as file:
-            for line in file:
-                parts = line.strip().split()
-                if len(parts) != 2:
-                    continue
-                func_name, func_id = parts
-                function_map[func_name] = int(func_id)
-                rev_function_map[int(func_id)] = func_name
         self.function_map = function_map
         self.rev_function_map = rev_function_map
+
+        self.bpf = None
+        self.next_func_call = None
+        self.function_call_list = []
 
     def generate_ebpf_program(self):
         base_program = """
@@ -245,23 +265,20 @@ int trace_lib_{func}_exit(struct pt_regs *ctx) {{
         while True:
             self.bpf.perf_buffer_poll(5)
 
-def get_function_list(file_path):
-    with open(file_path, "r") as file:
-        functions = [line.strip() for line in file if line.strip()]
-    return functions
 
-
-# Example Usage
 if __name__ == "__main__":
-    file_path = "library_function_list.txt"
-    function_list = get_function_list(file_path)
     graph = Graph(dot_file="./graph.dot")
+    data_loader = DataLoader("musl_functions.txt", "library_function_list.txt")
+    function_map, rev_function_map = data_loader.get_lib_function_map()
+    functions_to_trace = data_loader.get_library_function_called()
+
+
     tracer = EBPFTracer(
-        function_map_file="musl_functions.txt",
         graph=graph,
         libc_path="/lib/x86_64-linux-gnu/libc.so.6",
-        functions_to_trace=["getchar", "printf", "malloc", "free"]
+        functions_to_trace=functions_to_trace,
+        function_map=function_map,
+        rev_function_map=rev_function_map
     )
-    tracer.read_function_map()
     tracer.initialize_bpf()
     tracer.start_tracing()
