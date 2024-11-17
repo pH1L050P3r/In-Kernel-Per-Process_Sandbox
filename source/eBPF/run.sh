@@ -1,1 +1,1 @@
-python3 enforce_NFA_ebpf.py --dot-file ./graph.dot --function-map ./musl_functions.txt --library-functions ./library_function_list.txt
+python3 enforce_NFA_ebpf.py --dot-file ./graph.dot --function-map ./library_functions.txt --library-functions ./library_function_list.txt

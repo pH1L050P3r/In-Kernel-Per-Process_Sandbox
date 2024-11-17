@@ -59,7 +59,7 @@ def extract_functions(so_file):
 
         pprint(all_function_list_unique)
         index = 1
-        with open("musl_function_list.txt", "w") as fp:
+        with open("library_functions.txt", "w") as fp:
             for item in all_function_list_unique:
                 fp.write(f"{item[1]} {index}\n")
                 index +=1

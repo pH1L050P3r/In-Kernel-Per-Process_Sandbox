@@ -4,7 +4,7 @@ import signal
 import argparse
 
 class DataLoader:
-    def __init__(self, function_map_path="musl_functions.txt", function_list_path="library_function_list.txt"):
+    def __init__(self, function_map_path="library_functions.txt", function_list_path="library_function_list.txt"):
         self._path_lib_func = function_map_path
         self._lib_called_func_path = function_list_path
         self.function_map = {}
@@ -279,7 +279,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--function-map", type=str, required=True,
-        help="Path to the function map file (e.g., musl_functions.txt)."
+        help="Path to the function map file (e.g., library_functions.txt)."
     )
     parser.add_argument(
         "--library-functions", type=str, required=True,
