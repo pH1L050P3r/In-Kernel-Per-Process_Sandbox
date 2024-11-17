@@ -19,27 +19,6 @@ class EBPFTracer:
         self.next_func_call = None
         self.function_call_list = []
 
-    # def construct_graph(self):
-    #     graph = {}
-    #     with open(self.graph_file, "r") as file:
-    #         for line in file:
-    #             line = line.strip()
-    #             if "->" not in line or '[label="' not in line:
-    #                 continue
-    #             parts = line.split("->")
-    #             src = parts[0].strip()
-    #             dst_label = parts[1].strip()
-    #             dst_part, label_part = dst_label.split("[label=")
-    #             dst = dst_part.strip()
-    #             label = label_part.replace('"]', "").strip('"')
-                
-    #             if src not in graph:
-    #                 graph[src] = []
-    #             graph[src].append((dst, label))
-    #             if dst not in graph:
-    #                 graph[dst] = []
-    #     self.graph_data = graph
-
     def _reset(self):
         self.heads = self.get_new_heads(["main_0"])
         self.next_func_call = None
@@ -83,7 +62,6 @@ class EBPFTracer:
         self.graph_data = graph
         self.start = start_nodes
         self.end = end_nodes
-        print(self.start, self.end)
 
     def read_function_map(self):
         function_map = {}
@@ -251,9 +229,16 @@ int trace_lib_{func}_exit(struct pt_regs *ctx) {{
         while True:
             self.bpf.perf_buffer_poll(5)
 
+def get_function_list(file_path):
+    with open(file_path, "r") as file:
+        functions = [line.strip() for line in file if line.strip()]
+    return functions
+
 
 # Example Usage
 if __name__ == "__main__":
+    file_path = "library_function_list.txt"
+    function_list = get_function_list(file_path)
     tracer = EBPFTracer(
         function_map_file="musl_functions.txt",
         graph_file="./graph.dot",
