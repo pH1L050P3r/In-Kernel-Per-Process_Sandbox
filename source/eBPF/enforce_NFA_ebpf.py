@@ -1,6 +1,7 @@
 from bcc import BPF
 import os
 import signal
+import argparse
 
 class DataLoader:
     def __init__(self, function_map_path="musl_functions.txt", function_list_path="library_function_list.txt"):
@@ -270,15 +271,37 @@ class EBPFTracer:
 
 
 if __name__ == "__main__":
-    graph = Graph(dot_file="./graph.dot")
-    data_loader = DataLoader("musl_functions.txt", "library_function_list.txt")
+    # Set up command-line arguments
+    parser = argparse.ArgumentParser(description="eBPF Tracer for library calls")
+    parser.add_argument(
+        "--dot-file", type=str, required=True,
+        help="Path to the DOT file representing the graph."
+    )
+    parser.add_argument(
+        "--function-map", type=str, required=True,
+        help="Path to the function map file (e.g., musl_functions.txt)."
+    )
+    parser.add_argument(
+        "--library-functions", type=str, required=True,
+        help="Path to the file listing library functions to trace."
+    )
+    parser.add_argument(
+        "--libc-path", type=str, default="/lib/x86_64-linux-gnu/libc.so.6",
+        help="Path to the libc library (default: /lib/x86_64-linux-gnu/libc.so.6)."
+    )
+
+    args = parser.parse_args()
+
+    # Load data and initialize components
+    graph = Graph(dot_file=args.dot_file)
+    data_loader = DataLoader(args.function_map, args.library_functions)
     function_map, rev_function_map = data_loader.get_lib_function_map()
     functions_to_trace = data_loader.get_library_function_called()
 
-
+    # Set up and start the tracer
     tracer = EBPFTracer(
         graph=graph,
-        libc_path="/lib/x86_64-linux-gnu/libc.so.6",
+        libc_path=args.libc_path,
         functions_to_trace=functions_to_trace,
         function_map=function_map,
         rev_function_map=rev_function_map
