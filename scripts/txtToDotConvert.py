@@ -195,6 +195,6 @@ if __name__ == "__main__" :
             queue.append(item)
     file_path = "./graph.dot"
     exportDOTFormat(graph_list, visited, file_path)
-    graph = Graph.construct_from_dot(file_path)
-    for u, v, e in graph.edges():
-        print(f"{u} -> {v} [label={e}]")
+    # graph = Graph.construct_from_dot(file_path)
+    # for u, v, e in graph.edges():
+    #     print(f"{u} -> {v} [label={e}]")
