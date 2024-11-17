@@ -144,76 +144,75 @@ class EBPFTracer:
 
     def generate_ebpf_program(self):
         base_program = """
-#include <uapi/linux/ptrace.h>
+        #include <uapi/linux/ptrace.h>
 
-BPF_PERF_OUTPUT(output);
-BPF_HASH(process, u32, u32);
-BPF_ARRAY(stack, int, 10);
+        BPF_PERF_OUTPUT(output);
+        BPF_HASH(process, u32, u32);
+        BPF_ARRAY(stack, int, 10);
 
-struct command {
-    char type[64];
-    char func[128];
-    int next_lib_call;
-    int pid;
-};
+        struct command {
+            char type[64];
+            char func[128];
+            int next_lib_call;
+            int pid;
+        };
 
-TRACEPOINT_PROBE(syscalls, sys_enter_dummy) {
-    u32 pid = bpf_get_current_pid_tgid() >> 32;
-    if (process.lookup(&pid) == NULL) {
-        process.update(&pid, &pid);
-    }
+        TRACEPOINT_PROBE(syscalls, sys_enter_dummy) {
+            u32 pid = bpf_get_current_pid_tgid() >> 32;
+            if (process.lookup(&pid) == NULL) {
+                process.update(&pid, &pid);
+            }
 
-    int zero = 0;
-    int init_count = 0;
-    if (stack.lookup(&zero) == NULL) {
-        stack.update(&zero, &init_count);
-    }
+            int zero = 0;
+            int init_count = 0;
+            if (stack.lookup(&zero) == NULL) {
+                stack.update(&zero, &init_count);
+            }
 
-    struct command c = {.type = "dummy_sys_call", .func = "", .next_lib_call = args->value, .pid = pid};
-    output.perf_submit(args, &c, sizeof(c));
-    return 0;
-}
-"""
-
+            struct command c = {.type = "dummy_sys_call", .func = "", .next_lib_call = args->value, .pid = pid};
+            output.perf_submit(args, &c, sizeof(c));
+            return 0;
+        }
+        """
         for func in self.functions_to_trace:
             trace_function = f"""
-int trace_lib_{func}_enter(struct pt_regs *ctx) {{
-    u32 pid = bpf_get_current_pid_tgid() >> 32;
-    if (process.lookup(&pid) == NULL) return 0;
+            int trace_lib_{func}_enter(struct pt_regs *ctx) {{
+                u32 pid = bpf_get_current_pid_tgid() >> 32;
+                if (process.lookup(&pid) == NULL) return 0;
 
-    int zero = 0;
-    int *st_count = stack.lookup(&zero);
-    if (st_count) {{
-        if (*st_count == 0) {{
-            struct command c = {{}};
-            c.next_lib_call = PT_REGS_IP(ctx);
-            c.pid = pid;
-            __builtin_strncpy(c.type, "libc_call", sizeof(c.type));
-            __builtin_strncpy(c.func, "{func}", sizeof(c.func));
-            int new_count = *st_count + 1;
-            stack.update(&zero, &new_count);
-            output.perf_submit(ctx, &c, sizeof(c));
-        }} else {{
-            int new_count = *st_count + 1;
-            stack.update(&zero, &new_count);
-        }}
-    }}
-    return 0;
-}}
+                int zero = 0;
+                int *st_count = stack.lookup(&zero);
+                if (st_count) {{
+                    if (*st_count == 0) {{
+                        struct command c = {{}};
+                        c.next_lib_call = PT_REGS_IP(ctx);
+                        c.pid = pid;
+                        __builtin_strncpy(c.type, "libc_call", sizeof(c.type));
+                        __builtin_strncpy(c.func, "{func}", sizeof(c.func));
+                        int new_count = *st_count + 1;
+                        stack.update(&zero, &new_count);
+                        output.perf_submit(ctx, &c, sizeof(c));
+                    }} else {{
+                        int new_count = *st_count + 1;
+                        stack.update(&zero, &new_count);
+                    }}
+                }}
+                return 0;
+            }}
 
-int trace_lib_{func}_exit(struct pt_regs *ctx) {{
-    u32 pid = bpf_get_current_pid_tgid();
-    if (process.lookup(&pid) == NULL) return 0;
+            int trace_lib_{func}_exit(struct pt_regs *ctx) {{
+                u32 pid = bpf_get_current_pid_tgid();
+                if (process.lookup(&pid) == NULL) return 0;
 
-    int zero = 0;
-    int *st_count = stack.lookup(&zero);
-    if (st_count && *st_count > 0) {{
-        int new_count = *st_count - 1;
-        stack.update(&zero, &new_count);
-    }}
-    return 0;
-}}
-"""
+                int zero = 0;
+                int *st_count = stack.lookup(&zero);
+                if (st_count && *st_count > 0) {{
+                    int new_count = *st_count - 1;
+                    stack.update(&zero, &new_count);
+                }}
+                return 0;
+            }}
+            """
             base_program += trace_function
         return base_program
 
