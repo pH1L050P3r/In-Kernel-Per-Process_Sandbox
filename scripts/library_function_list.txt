@@ -1,0 +1,4 @@
+free
+getchar
+malloc
+printf
