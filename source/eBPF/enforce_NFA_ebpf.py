@@ -226,42 +226,46 @@ int trace_lib_{func}_exit(struct pt_regs *ctx) {{
             except Exception as e:
                 print(f"Unable to trace lib: {func}: {e}")
 
-    def print_event(self, cpu, data, size):
-        event = self.bpf["output"].event(data)
-        type_, func, next_lib_call, pid = event.type.decode(), event.func.decode(), event.next_lib_call, event.pid
+    def process_dummy_sys_call(self, next_func_call, pid):
+        """Handle dummy_sys_call events."""
+        self.next_func_call = self.rev_function_map.get(next_func_call, None)
+        print("-" * 80)
+        print(f"command : dummy_sys_call")
+        print(f"next_lib_call : {next_func_call} {self.next_func_call}\npid : {pid}")
+        print("-" * 80)
 
+    def process_libc_call(self, func, pid):
+        """Handle libc_call events."""
+        print("-" * 80)
+        print(f"command : libc_call")
+        print(f"func_call : {func}\npid : {pid}")
+        if not self.graph.check_func_call(self.next_func_call):
+            print(f"Killing process with ID : {pid}")
+            os.kill(pid, signal.SIGKILL)
+            print(self.function_call_list)
+            self.graph.reset()
+        else:
+            self.function_call_list.append(func)
+            if self.graph._end[0] in self.graph.get_heads() and len(self.graph.get_heads()) == 1:
+                print("-" * 80)
+                print("Library Call Order : ", self.function_call_list)
+                self.graph.reset()
+        print("-" * 80)
+
+    def print_event(self, cpu, data, size):
+        """Dispatch events to appropriate handlers."""
+        event = self.bpf["output"].event(data)
+        type_, func, next_func_call, pid = event.type.decode(), event.func.decode(), event.next_lib_call, event.pid
 
         if type_ == "dummy_sys_call":
-            self.next_func_call = self.rev_function_map.get(next_lib_call, None)
-            print("-" * 80)
-            print("command : ", type_)
-            print("next_lib_call : ", next_lib_call, self.next_func_call)
-            print("pid : ", pid)
-            print("-" * 80)
+            self.process_dummy_sys_call(next_func_call, pid)
         elif type_ == "libc_call":
-            print("-" * 80)
-            print("command : ", type_)
-            print("func_call : ", func)
-            print("pid : ", pid)
-            print("-" * 80)
-            old_heads = self.graph.get_heads()
-            # print(self.next_func_call, old_heads)
-            flag = self.graph.check_func_call(self.next_func_call)
-            new_heads = self.graph.get_heads()
-            if not flag:
-                print("Killing process with ID : ", pid)
-                os.kill(pid, signal.SIGKILL)
-                print(self.function_call_list)
-                graph.reset()
-            else:
-                # print(old_heads, new_heads)
-                self.function_call_list.append(func)
-                if self.graph._end[0] in new_heads and len(new_heads) == 1:
-                    print(self.function_call_list)
-                    graph.reset()
+            self.process_libc_call(func, pid)
+
 
     def start_tracing(self):
         self.bpf["output"].open_perf_buffer(self.print_event, page_cnt=2 << 10)
+        print("Ready for Tracing")
         while True:
             self.bpf.perf_buffer_poll(5)
 
