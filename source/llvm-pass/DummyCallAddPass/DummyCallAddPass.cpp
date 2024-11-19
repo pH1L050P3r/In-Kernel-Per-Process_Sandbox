@@ -46,12 +46,12 @@ namespace {
 
     virtual bool doInitialization(Module &)  {
       fname.clear();
-      deserializeSet("library_function_list.txt"); 
+      deserializeSet("called_lib_functions.txt"); 
       return false; 
     }
 
     virtual bool doFinalization(Module &) { 
-      serializeSet("library_function_list.txt");
+      serializeSet("called_lib_functions.txt");
       return false; 
     }
 
