@@ -1,4 +1,0 @@
-free
-getchar
-malloc
-printf
