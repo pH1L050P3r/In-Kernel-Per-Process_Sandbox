@@ -40,3 +40,5 @@ temp.txt
 scripts/ENFA_*
 scripts/graph.dot
 */eBPF/graph.dot
+
+help_code/*
