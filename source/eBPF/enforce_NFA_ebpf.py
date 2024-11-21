@@ -246,10 +246,10 @@ class EBPFTracer:
             self.graph.reset()
         else:
             self.function_call_list.append(func)
-            if self.graph._end[0] in self.graph.get_heads() and len(self.graph.get_heads()) == 1:
+            if self.graph._end[0] in self.graph.get_heads():
                 print("-" * 80)
                 print("Library Call Order : ", self.function_call_list)
-                self.graph.reset()
+                # self.graph.reset()
         print("-" * 80)
 
     def print_event(self, cpu, data, size):
