@@ -240,8 +240,10 @@ class EBPFTracer:
                 os.kill(pid, signal.SIGKILL)
                 print(f"Killing process with ID : {pid}")
                 print(self.function_call_list)
+                self.function_call_list = []
                 self.graph.reset()
             except Exception as e:
+                self.function_call_list = []
                 self.graph.reset()
         # elif func == "exit":
         #     if self.graph._end[0] in self.graph.get_heads():
