@@ -1,5 +1,0 @@
-brk
-dup
-getpid
-socket
-write
