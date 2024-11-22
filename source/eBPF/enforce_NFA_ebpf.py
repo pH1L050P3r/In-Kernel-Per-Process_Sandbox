@@ -181,21 +181,16 @@ class EBPFTracer:
                 u32 pid = bpf_get_current_pid_tgid() >> 32;
                 if (process.lookup(&pid) == NULL) return 0;
 
-                int zero = 0;
-                int *st_count = stack.lookup(&zero);
+                int zero = 0; int *st_count = stack.lookup(&zero);
                 if (st_count) {{
                     if (*st_count == 0) {{
-                        struct command c = {{}};
-                        c.next_lib_call = PT_REGS_IP(ctx);
-                        c.pid = pid;
-                        __builtin_strncpy(c.type, "libc_call", sizeof(c.type));
-                        __builtin_strncpy(c.func, "{func}", sizeof(c.func));
-                        int new_count = *st_count + 1;
-                        stack.update(&zero, &new_count);
+                        struct command c = {{ .type = "libc_call", .func = "{func}", .next_lib_call = PT_REGS_IP(ctx), .pid = pid}};
+                        int nc = *st_count + 1;
+                        stack.update(&zero, &nc);
                         output.perf_submit(ctx, &c, sizeof(c));
                     }} else {{
-                        int new_count = *st_count + 1;
-                        stack.update(&zero, &new_count);
+                        int nc = *st_count + 1;
+                        stack.update(&zero, &nc);
                     }}
                 }}
                 return 0;
@@ -219,6 +214,7 @@ class EBPFTracer:
 
     def initialize_bpf(self):
         self.bpf = BPF(text=self.generate_ebpf_program())
+        print("Program Loaded.")
         for func in self.functions_to_trace:
             try:
                 self.bpf.attach_uprobe(name=self.libc_path, sym=func, fn_name=f"trace_lib_{func}_enter")
@@ -240,16 +236,23 @@ class EBPFTracer:
         print(f"command : libc_call")
         print(f"func_call : {func}\npid : {pid}")
         if not self.graph.check_func_call(self.next_func_call):
-            print(f"Killing process with ID : {pid}")
-            os.kill(pid, signal.SIGKILL)
-            print(self.function_call_list)
-            self.graph.reset()
+            try:
+                os.kill(pid, signal.SIGKILL)
+                print(f"Killing process with ID : {pid}")
+                print(self.function_call_list)
+                self.graph.reset()
+            except Exception as e:
+                self.graph.reset()
+        # elif func == "exit":
+        #     if self.graph._end[0] in self.graph.get_heads():
+        #         print("-" * 80)
+        #         print("Library Call Order : ", self.function_call_list)
+        #         self.graph.reset()
         else:
             self.function_call_list.append(func)
             if self.graph._end[0] in self.graph.get_heads():
                 print("-" * 80)
                 print("Library Call Order : ", self.function_call_list)
-                # self.graph.reset()
         print("-" * 80)
 
     def print_event(self, cpu, data, size):
@@ -297,6 +300,7 @@ if __name__ == "__main__":
     data_loader = DataLoader(args.function_map, args.library_functions)
     function_map, rev_function_map = data_loader.get_lib_function_map()
     functions_to_trace = data_loader.get_library_function_called()
+    # functions_to_trace = [ func for func in function_map.keys() if not func.startswith("_")]
 
     # Set up and start the tracer
     tracer = EBPFTracer(
@@ -308,3 +312,4 @@ if __name__ == "__main__":
     )
     tracer.initialize_bpf()
     tracer.start_tracing()
+    # BCC_PROBE_LIMIT = 50000
