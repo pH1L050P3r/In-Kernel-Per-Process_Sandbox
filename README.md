@@ -123,6 +123,16 @@ Use Graphviz to convert the DOT file to a PNG image:
     dot -Tpng graph.dot -o graph.png
 
 
+Step 8: Execute eBPF script
+----------------------------
+
+    cp graph.dot source/eBPF
+    cp library_function.txt  source/eBPF
+    cp called_function.txt source/eBPF
+    ./source/run.sh
+    ./a.out
+
+
 ## Benchmarks
 
 The project has been tested with the `mbedTLS` library. Compile `mbedTLS` and use the sandbox to enforce the policy on its binary programs.
