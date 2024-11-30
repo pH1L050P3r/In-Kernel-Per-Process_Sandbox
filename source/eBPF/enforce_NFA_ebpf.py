@@ -2,6 +2,13 @@ from bcc import BPF
 import os
 import signal
 import argparse
+import resource
+
+from tqdm import tqdm
+
+os.environ['BCC_PROBE_LIMIT'] = '8192'
+soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
 
 class DataLoader:
     def __init__(self, function_map_path="library_functions.txt", function_list_path="library_function_list.txt"):
@@ -174,8 +181,22 @@ class EBPFTracer:
             output.perf_submit(args, &c, sizeof(c));
             return 0;
         }
+
+        static int call_lib_return(u32 pid){
+            // u32 pid = bpf_get_current_pid_tgid();
+            if (process.lookup(&pid) == NULL) return 0;
+
+            int zero = 0;
+            int *st_count = stack.lookup(&zero);
+            if (st_count && *st_count > 0) {{
+                int new_count = *st_count - 1;
+                stack.update(&zero, &new_count);
+            }}
+            return 0;
+        }
+        
         """
-        for func in self.functions_to_trace:
+        for func in tqdm(self.functions_to_trace, desc="Generating  Program"):
             trace_function = f"""
             int trace_lib_{func}_enter(struct pt_regs *ctx) {{
                 u32 pid = bpf_get_current_pid_tgid() >> 32;
@@ -198,15 +219,7 @@ class EBPFTracer:
 
             int trace_lib_{func}_exit(struct pt_regs *ctx) {{
                 u32 pid = bpf_get_current_pid_tgid();
-                if (process.lookup(&pid) == NULL) return 0;
-
-                int zero = 0;
-                int *st_count = stack.lookup(&zero);
-                if (st_count && *st_count > 0) {{
-                    int new_count = *st_count - 1;
-                    stack.update(&zero, &new_count);
-                }}
-                return 0;
+                return call_lib_return(pid);
             }}
             """
             base_program += trace_function
@@ -215,7 +228,7 @@ class EBPFTracer:
     def initialize_bpf(self):
         self.bpf = BPF(text=self.generate_ebpf_program())
         print("Program Loaded.")
-        for func in self.functions_to_trace:
+        for func in tqdm(self.functions_to_trace, desc="Attaching probes"):
             try:
                 self.bpf.attach_uprobe(name=self.libc_path, sym=func, fn_name=f"trace_lib_{func}_enter")
                 self.bpf.attach_uretprobe(name=self.libc_path, sym=func, fn_name=f"trace_lib_{func}_exit")
