@@ -249,9 +249,9 @@ class EBPFTracer:
         print(f"command : libc_call")
         print(f"func_call : {func}\npid : {pid}")
         if not self.graph.check_func_call(self.next_func_call):
+            print(f"Killing process with ID : {pid}")
             try:
                 os.kill(pid, signal.SIGKILL)
-                print(f"Killing process with ID : {pid}")
                 print(self.function_call_list)
                 self.function_call_list = []
                 self.graph.reset()
