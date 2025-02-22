@@ -1,3 +1,6 @@
+The project involves building an in-kernel, per-process sandbox for Linux that enforces a library call policy by analyzing a given C program using the LLVM toolchain, extracting a library call graph, inserting dummy system calls for tracking, implementing a kernel-level enforcement engine using seccomp, eBPF, or a custom kernel module, creating a dummy() system call in the kernel to monitor library calls, using a Finite State Automaton (NFA) to enforce policy, testing the sandbox with mbed-tls, and requiring students to independently design, implement, and evaluate the system with minimal guidance.
+
+
 # Build Instructions
 
 This project involves compiling the `mbedTls` library with custom LLVM passes and the `musl` toolchain for sandboxing.
